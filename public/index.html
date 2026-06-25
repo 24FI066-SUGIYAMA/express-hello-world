@@ -3,147 +3,517 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chat App</title>
+    <title>Premium Chat & Reactions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-      .chat {
+      :root {
+        --bg-gradient: linear-gradient(135deg, #0d0b14 0%, #151124 100%);
+        --chat-bg: rgba(255, 255, 255, 0.03);
+        --chat-border: rgba(255, 255, 255, 0.06);
+        --text-main: #f1ecf9;
+        --text-muted: #9f96b5;
+        --primary: #7b2cbf;
+        --primary-glow: rgba(123, 44, 191, 0.4);
+        --primary-gradient: linear-gradient(135deg, #9d4edd 0%, #7b2cbf 100%);
+        --bubble-self: rgba(157, 78, 221, 0.12);
+        --bubble-self-border: rgba(157, 78, 221, 0.25);
+        --bubble-other: rgba(255, 255, 255, 0.04);
+        --bubble-other-border: rgba(255, 255, 255, 0.08);
+        --input-bg: rgba(0, 0, 0, 0.3);
+        --font-main: 'Outfit', 'Noto Sans JP', sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-main);
+        background: var(--bg-gradient);
+        color: var(--text-main);
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      .chat-container {
+        width: 100%;
+        max-width: 900px;
+        height: 95vh;
+        background: var(--chat-bg);
+        border: 1px solid var(--chat-border);
+        border-radius: 24px;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
         display: flex;
         flex-direction: column;
-        height: 80vh;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
       }
+
+      /* ヘッダー */
+      .chat-header {
+        padding: 20px 28px;
+        border-bottom: 1px solid var(--chat-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.1);
+      }
+
+      .chat-header h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: -0.5px;
+        background: linear-gradient(90deg, #e0aaff, #9d4edd);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .user-badge {
+        font-size: 0.85rem;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        color: var(--text-muted);
+      }
+
+      .user-badge span {
+        color: #e0aaff;
+        font-weight: 600;
+      }
+
+      /* メッセージ一覧 */
       .messages {
         flex: 1;
         overflow-y: auto;
+        padding: 24px 28px;
         list-style: none;
-        padding: 0;
-        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        scroll-behavior: smooth;
       }
+
+      /* 各メッセージ */
+      .message-item {
+        position: relative;
+        align-self: flex-start;
+        max-width: 75%;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .message-item.self {
+        align-self: flex-end;
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* ユーザーIDラベル */
+      .user-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-left: 12px;
+      }
+
+      .self .user-label {
+        margin-left: 0;
+        margin-right: 12px;
+        align-self: flex-end;
+      }
+
+      /* メッセージバブル */
+      .message-bubble {
+        padding: 14px 18px;
+        border-radius: 18px;
+        border-top-left-radius: 4px;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        word-break: break-word;
+        background: var(--bubble-other);
+        border: 1px solid var(--bubble-other-border);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .self .message-bubble {
+        border-radius: 18px;
+        border-top-right-radius: 4px;
+        background: var(--bubble-self);
+        border: 1px solid var(--bubble-self-border);
+      }
+
+      /* アクションバー (ホバー時の絵文字) */
+      .message-actions {
+        position: absolute;
+        top: -16px;
+        right: 12px;
+        display: flex;
+        gap: 3px;
+        background: rgba(20, 16, 32, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 30px;
+        padding: 3px 6px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(8px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 10;
+        backdrop-filter: blur(10px);
+      }
+
+      .self .message-actions {
+        right: auto;
+        left: 12px;
+      }
+
+      .message-item:hover .message-actions {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+
+      .action-emoji-btn {
+        background: none;
+        border: none;
+        font-size: 1.15rem;
+        cursor: pointer;
+        padding: 4px 6px;
+        border-radius: 50%;
+        transition: background 0.15s, transform 0.1s;
+      }
+
+      .action-emoji-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: scale(1.2);
+      }
+
+      .action-emoji-btn:active {
+        transform: scale(0.95);
+      }
+
+      /* リアクション一覧 */
+      .reactions-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 4px;
+        padding-left: 6px;
+      }
+
+      .self .reactions-list {
+        justify-content: flex-end;
+        padding-left: 0;
+        padding-right: 6px;
+      }
+
+      .reaction-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s ease;
+      }
+
+      .reaction-badge:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .reaction-badge.active {
+        background: rgba(157, 78, 221, 0.2);
+        border-color: rgba(157, 78, 221, 0.6);
+        box-shadow: 0 0 10px rgba(157, 78, 221, 0.15);
+      }
+
+      .reaction-badge .count {
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      .reaction-badge.active .count {
+        color: #e0aaff;
+      }
+
+      /* フッター/送信フォーム */
+      .form-container {
+        padding: 24px 28px;
+        border-top: 1px solid var(--chat-border);
+        background: rgba(0, 0, 0, 0.15);
+      }
+
       .form {
         display: flex;
+        gap: 12px;
       }
-      .input {
+
+      .input-wrapper {
         flex: 1;
-        padding: 10px;
-        border: 1px solid #ccc;
+        position: relative;
       }
+
+      .input {
+        width: 100%;
+        background: var(--input-bg);
+        border: 1px solid var(--chat-border);
+        padding: 16px 20px;
+        border-radius: 16px;
+        color: var(--text-main);
+        font-family: var(--font-main);
+        font-size: 0.95rem;
+        outline: none;
+        transition: all 0.3s ease;
+      }
+
+      .input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 15px var(--primary-glow);
+        background: rgba(0, 0, 0, 0.4);
+      }
+
       .submit {
-        padding: 10px;
-        border: 1px solid #ccc;
-        background: #eee;
+        background: var(--primary-gradient);
+        border: none;
+        color: white;
+        padding: 0 28px;
+        border-radius: 16px;
+        font-family: var(--font-main);
+        font-weight: 600;
+        font-size: 0.95rem;
         cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(123, 44, 191, 0.3);
+      }
+
+      .submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(123, 44, 191, 0.5);
+      }
+
+      .submit:active {
+        transform: translateY(0);
+      }
+
+      /* スクロールバーのカスタマイズ */
+      .messages::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .messages::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .messages::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+
+      .messages::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
       }
     </style>
   </head>
   <body>
-    <div class="chat">
-      <ul class="messages"></ul>
-      <form class="form">
-        <input class="input" autocomplete="off" />
-        <button class="submit">Send</button>
-      </form>
+    <div class="chat-container">
+      <header class="chat-header">
+        <h1>Premium Chat</h1>
+        <div class="user-badge">ID: <span id="my-id-display">Connecting...</span></div>
+      </header>
+
+      <ul class="messages" id="messages-list"></ul>
+
+      <div class="form-container">
+        <form class="form" id="chat-form">
+          <div class="input-wrapper">
+            <input class="input" id="message-input" placeholder="メッセージを入力..." autocomplete="off" />
+          </div>
+          <button class="submit">Send</button>
+        </form>
+      </div>
     </div>
-    <canvas
-      id="canvas"
-      width="600"
-      height="600"
-      style="border: solid 1px black"
-    ></canvas>
 
     <script>
       function main() {
         const host = location.origin.replace(/^http/, 'ws')
         const ws = new WebSocket(host + '/ws')
-        const myId = self.crypto.randomUUID().substr(0, 8)
-
-        const canvas = document.getElementById('canvas')
-        const ctx = canvas.getContext('2d')
-
-        let drawing = false
-
-        canvas.addEventListener('mousedown', (e) => {
-          sendDrawingEvent(e.offsetX, e.offsetY, 'mousedown')
-        })
-        function mousedown() {
-          drawing = true
-          ctx.beginPath()
+        
+        // セキュアコンテキスト外でも動作する安全なID生成
+        let myId
+        if (typeof self !== 'undefined' && self.crypto && typeof self.crypto.randomUUID === 'function') {
+          myId = self.crypto.randomUUID().slice(0, 8)
+        } else {
+          myId = Math.random().toString(36).substring(2, 10)
         }
 
-        canvas.addEventListener('mousemove', (e) => {
-          if (drawing) {
-            sendDrawingEvent(e.offsetX, e.offsetY, 'mousemove')
-          }
-        })
-        function mousemove(x, y) {
-          if (drawing) {
-            draw(x, y, true)
-          }
-        }
+        // 自分のIDをヘッダーに表示
+        document.getElementById('my-id-display').textContent = myId
 
-        canvas.addEventListener('mouseup', (e) => {
-          sendDrawingEvent(e.offsetX, e.offsetY, 'mouseup')
-        })
-        function mouseup() {
-          drawing = false
-          ctx.beginPath()
-        }
-
-        canvas.addEventListener('mouseout', (e) => {
-          sendDrawingEvent(e.offsetX, e.offsetY, 'mouseout')
-        })
-        function mouseout() {
-          drawing = false
-        }
-
-        function draw(x, y, dragging) {
-          if (dragging) {
-            ctx.lineTo(x, y)
-            ctx.stroke()
-          } else {
-            ctx.moveTo(x, y)
-          }
-        }
-
-        function sendDrawingEvent(x, y, control) {
-          const message = JSON.stringify({ x, y, control, type: 'paint' })
-          ws.send(message)
-        }
-
-        ws.onmessage = (event) => {
-          const msg = JSON.parse(event.data)
-          if (msg.type === 'paint') {
-            const { x, y, control } = msg
-            console.log({ control })
-            if (control === 'mousedown') {
-              mousedown()
-            } else if (control === 'mouseup') {
-              mouseup()
-            } else if (control === 'mousemove') {
-              mousemove(x, y)
-            } else if (control === 'mouseout') {
-              mouseout()
-            }
-          }
-          if (msg.type === 'chat') {
-            const { id, text } = msg
-            const messageList = document.querySelector('.messages')
-            const li = document.createElement('li')
-            if (id === myId) {
-              li.textContent = `(${id})自分:` + text
-            } else {
-              li.textContent = id + ': ' + text
-            }
-            messageList.appendChild(li)
-          }
-        }
-
-        const form = document.querySelector('.form')
+        const form = document.getElementById('chat-form')
+        const input = document.getElementById('message-input')
+        const messageList = document.getElementById('messages-list')
 
         form.onsubmit = function (e) {
           e.preventDefault()
-          const input = document.querySelector('.input')
-          const text = input.value
-          ws.send(JSON.stringify({ id: myId, text, type: 'chat' }))
+          const text = input.value.trim()
+          if (text === '') return
+
+          // チャット用の一意なメッセージIDを生成
+          const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7)
+
+          ws.send(JSON.stringify({ 
+            type: 'chat', 
+            messageId: messageId, 
+            id: myId, 
+            text: text 
+          }))
+
           input.value = ''
           input.focus()
+        }
+
+        // リアクション情報を一時保持するメモリバッファ (トグル判定用)
+        // 構造: { [messageId]: { [emoji]: Set(userIds) } }
+        const reactionStates = {}
+
+        // 送信・トグル時のリアクションハンドラ
+        window.sendReaction = function(messageId, emoji) {
+          ws.send(JSON.stringify({
+            type: 'reaction',
+            messageId: messageId,
+            emoji: emoji,
+            id: myId
+          }))
+        }
+
+        ws.onmessage = function (msg) {
+          try {
+            const data = JSON.parse(msg.data)
+            
+            // 1. チャットメッセージの受信処理
+            if (data.type === 'chat' && data.messageId && data.id && data.text) {
+              const { id, text, messageId } = data
+              const isMe = (id === myId)
+
+              // メッセージ要素の構築
+              const li = document.createElement('li')
+              li.className = isMe ? 'message-item self' : 'message-item'
+              li.setAttribute('data-message-id', messageId)
+
+              // ユーザーIDラベル
+              const label = document.createElement('span')
+              label.className = 'user-label'
+              label.textContent = isMe ? `自分 (${id})` : id
+              li.appendChild(label)
+
+              // メッセージバブル
+              const bubble = document.createElement('div')
+              bubble.className = 'message-bubble'
+              bubble.textContent = text
+              li.appendChild(bubble)
+
+              // アクションツールバー (ホバー時に絵文字候補を表示)
+              const actions = document.createElement('div')
+              actions.className = 'message-actions'
+              const emojiList = ['👍', '❤️', '🔥', '😆', '🙏']
+              emojiList.forEach(emoji => {
+                const btn = document.createElement('button')
+                btn.className = 'action-emoji-btn'
+                btn.textContent = emoji
+                btn.onclick = () => window.sendReaction(messageId, emoji)
+                actions.appendChild(btn)
+              })
+              li.appendChild(actions)
+
+              // リアクション表示エリア
+              const reactionContainer = document.createElement('div')
+              reactionContainer.className = 'reactions-list'
+              li.appendChild(reactionContainer)
+
+              messageList.appendChild(li)
+              
+              // 最新メッセージへスクロール
+              messageList.scrollTop = messageList.scrollHeight
+            }
+            
+            // 2. リアクションデータの受信処理
+            else if (data.type === 'reaction' && data.messageId && data.emoji && data.id) {
+              const { messageId, emoji, id: senderId } = data
+              
+              // 該当メッセージがDOM上にあるかチェック
+              const messageEl = document.querySelector(`[data-message-id="${messageId}"]`)
+              if (!messageEl) return
+
+              const reactionContainer = messageEl.querySelector('.reactions-list')
+
+              // reactionStates メモリの初期化
+              if (!reactionStates[messageId]) reactionStates[messageId] = {}
+              if (!reactionStates[messageId][emoji]) reactionStates[messageId][emoji] = new Set()
+
+              const userSet = reactionStates[messageId][emoji]
+
+              // すでにリアクションしていたらトグルで削除、していなければ追加
+              if (userSet.has(senderId)) {
+                userSet.delete(senderId)
+              } else {
+                userSet.add(senderId)
+              }
+
+              // DOM上のバッジを更新・生成
+              let badge = reactionContainer.querySelector(`[data-emoji="${emoji}"]`)
+              
+              if (userSet.size === 0) {
+                // リアクションが無くなったらバッジ要素を削除
+                if (badge) badge.remove()
+              } else {
+                if (!badge) {
+                  // バッジが無い場合は新規作成
+                  badge = document.createElement('span')
+                  badge.className = 'reaction-badge'
+                  badge.setAttribute('data-emoji', emoji)
+                  badge.onclick = () => window.sendReaction(messageId, emoji)
+                  
+                  badge.innerHTML = `<span class="emoji">${emoji}</span><span class="count">0</span>`
+                  reactionContainer.appendChild(badge)
+                }
+
+                // カウント更新とアクティブクラス(自分のリアクション表示)
+                badge.querySelector('.count').textContent = userSet.size
+                if (userSet.has(myId)) {
+                  badge.classList.add('active')
+                } else {
+                  badge.classList.remove('active')
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Failed to parse WebSocket message:', error, msg.data)
+          }
         }
 
         ws.onerror = function (error) {
